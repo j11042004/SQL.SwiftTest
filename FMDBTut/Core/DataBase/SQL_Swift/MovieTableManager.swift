@@ -68,13 +68,12 @@ class MovieTableManager: DatabaseManager {
 }
 
 extension MovieTableManager {
-    public func insert(movieInfo: MovieResultInfo) {
+    public func insert(movieInfo: MovieResultInfo) throws {
         do {
             let sql = try moviesTable.insert(movieInfo)
-            print("insert sql : \(sql.asSQL())")
             try databaseConnection?.run(sql)
         } catch  {
-            NSLog("insert error : \(error.localizedDescription)")
+            throw error
         }
     }
     
@@ -108,7 +107,6 @@ extension MovieTableManager {
     
     public func loadInfos() throws -> [MovieResultInfo]? {
         do {
-            try loadInfos(true)
             let savedInfos = try databaseConnection?.prepare(moviesTable).map() { (row) -> MovieResultInfo in
                 return try row.decode()
             }
@@ -118,7 +116,64 @@ extension MovieTableManager {
         }
     }
     
-    public func loadInfos(_ useSql: Bool = true) throws -> [MovieResultInfo]? {
+    
+    //MARK: - SQL
+    func insertInfo(info: MovieResultInfo) throws {
+        
+        let title = info.title
+        let category = info.category
+        let year = info.year
+        let movieUrl = info.movieURL
+        let coverURL = info.coverURL
+        let watched = info.watched == true
+        let likes = info.likes == nil ? 0 : info.likes!
+        
+        let sql = "INSERT INTO \"\(tableName)\" (\(movieTitle.asSQL()), \(movieCategory.asSQL()), \(movieYear.asSQL()), \(movieURL.asSQL()), \(movieCoverURL.asSQL()), \(movieWatched.asSQL()), \(movieLikes.asSQL())) VALUES ('\(title)', '\(category)', \(year), '\(movieUrl)', '\(coverURL)', \(watched), \(likes))"
+        
+        do {
+            try databaseConnection?.run(sql)
+        } catch  {
+            throw error
+        }
+    }
+    
+    public func deleteInfo(info : MovieResultInfo) throws -> Bool  {
+        guard let infoId = info.movieID else {
+            return false
+        }
+        let sql = "DELETE FROM \"\(tableName)\" WHERE (\(movieId.asSQL()) = \(infoId))"
+        do {
+            try databaseConnection?.run(sql)
+            if let handle = databaseConnection?.handle {
+                let isChange = sqlite3_changes(handle)
+                return isChange != 0
+            }
+            return false
+        } catch  {
+            throw error
+        }
+    }
+    
+    func updateInfo(info: MovieResultInfo) throws {
+        let `id` : Int = info.movieID
+        let title = info.title
+        let category = info.category
+        let year = info.year
+        let movieUrl = info.movieURL
+        let coverURL = info.coverURL
+        let watched = info.watched == true
+        let likes = info.likes == nil ? 0 : info.likes!
+        
+        let sql = "UPDATE \"\(tableName)\" SET \(movieId.asSQL()) = \(id), \(movieTitle.asSQL()) = '\(title)', \(movieCategory.asSQL()) = '\(category)', \(movieYear.asSQL()) = \(year), \(movieURL.asSQL()) = '\(movieUrl)', \(movieCoverURL.asSQL()) = '\(coverURL)', \(movieWatched.asSQL()) = \(watched), \(movieLikes.asSQL()) = \(likes) WHERE (\(movieId.asSQL()) = \(id))"
+        
+        do {
+            try databaseConnection?.run(sql)
+        } catch  {
+            throw error
+        }
+    }
+    
+    public func loadInfoArray(_ useSql: Bool = true) throws -> [MovieResultInfo]? {
         do {
             let sql = "SELECT * FROM \"\(tableName)\""
             guard let results = try databaseConnection?.prepare(sql) else {
@@ -271,26 +326,6 @@ extension MovieTableManager {
 
 //MARK: - 新增資料
 extension MovieTableManager {
-    func insert(title: String, category: String, year: Int, movieUrl: String? = nil, coverURL: String, watched: Bool = false, likes: Int = 0) {
-        do {
-            let int64Year = Int64(year)
-            let int64Likes = Int64(likes)
-            let convertMovieURL : Expression<String?> = Expression<String?>(value: movieUrl)
-            
-            let sql = moviesTable.insert(movieTitle <- title,
-                                         movieCategory <- category,
-                                         movieYear <- int64Year,
-                                         movieURL <- convertMovieURL,
-                                         movieCoverURL <- coverURL,
-                                         movieWatched <- watched,
-                                         movieLikes <- int64Likes)
-            print("property insert sql : \(sql.asSQL())")
-            try databaseConnection?.run(sql)
-        } catch  {
-            NSLog("insert error : \(error.localizedDescription)")
-        }
-    }
-    
     func insert(infoArray: [MovieResultInfo]) {
         if infoArray.count == 0 {
             return
@@ -298,7 +333,11 @@ extension MovieTableManager {
         do {
             try transaction { [weak self] in
                 for info in infoArray {
-                    self?.insert(movieInfo: info)
+                    do {
+                        try self?.insert(movieInfo: info)
+                    } catch  {
+                        
+                    }
                 }
             }
         } catch  {
