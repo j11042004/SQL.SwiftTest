@@ -9,11 +9,13 @@
 import UIKit
 import SQLite
 
-
 class MovieTableManager: DatabaseManager {
-    static let shared = MovieTableManager()
+    static let instance = MovieTableManager()
     
+    /*Table名稱*/
     private let tableName = "movies"
+    
+    /*Table欄位*/
     public private(set) lazy var moviesTable = Table(tableName)
     public let movieId = Expression<Int64>("movieID")
     public let movieTitle = Expression<String>("title")
@@ -25,29 +27,36 @@ class MovieTableManager: DatabaseManager {
     public let movieWatched = Expression<Bool>("watched")
     public let movieLikes = Expression<Int64>("likes")
     
+    /**/
     private var hadCoverDataRow = false
     
+    /**建立Table*/
     override func createDatabase() -> Bool {
-        let result = super.createDatabase()
+        let result:Bool = super.createDatabase()
         
         func createTable() {
             // temporary: 是否為臨時的 Table
             // ifNotExists: 是否不存在時才會建立
             // withoutRowid: 是否建立自動增長的 Id
-            let createSql = moviesTable.create(temporary: false, ifNotExists: true, withoutRowid: false) { (table) in
+            let createSql = moviesTable.create(temporary: false, ifNotExists: true, withoutRowid: false) {
+                table in
+                
                 table.column(movieId, primaryKey: .autoincrement)
                 table.column(movieTitle)
                 table.column(movieCategory)
                 table.column(movieYear)
                 table.column(movieURL)
                 table.column(movieCoverURL)
+                
                 // 若是由 Codable Modle 會有 nil 的 欄位要在此給預設值
                 table.column(movieWatched, defaultValue: false)
                 table.column(movieLikes, defaultValue: 0)
 
                 NSLog("\(movieWatched.expression.asSQL())")
             }
+            
             do {
+                /*create table*/
                 try databaseConnection?.run(createSql)
             } catch  {
                 NSLog("create table error : \(error)")
@@ -55,7 +64,9 @@ class MovieTableManager: DatabaseManager {
         }
         
         do {
-            let isExists = try databaseConnection?.scalar(moviesTable.exists)
+            let isExists:Bool? = try databaseConnection?.scalar(moviesTable.exists)//該Table是否已成功創建
+            
+            /*Table不存在，重跑一次方法*/
             if isExists != true {
                 createTable()
             }
@@ -63,35 +74,43 @@ class MovieTableManager: DatabaseManager {
             NSLog("check table Error : \(error)")
             createTable()
         }
+        
         return result
     }
 }
 
 extension MovieTableManager {
+    /**新增一筆資料*/
     public func insert(movieInfo: MovieResultInfo) throws {
         do {
-            let sql = try moviesTable.insert(movieInfo)
+            let sql:Insert = try moviesTable.insert(movieInfo)
+            
             try databaseConnection?.run(sql)
         } catch  {
             throw error
         }
     }
     
+    /**刪除一筆資料(以pkey為刪除條件)*/
     public func delete(info : MovieResultInfo) -> Bool  {
-        let movId = Int64(info.movieID)
-        let selId = Expression<Int64>(value: movId)
-        let deleteQuery = moviesTable.filter(movieId == selId).delete()
+        let movId:Int64 = Int64(info.movieID)
+        let selId:Expression<Int64> = Expression<Int64>(value: movId)
+        let deleteQuery:Delete = moviesTable.filter(movieId == selId).delete()
+        
+        var result = false
+        
         do {
-            var result = false
             if let deleteResult = try databaseConnection?.run(deleteQuery) {
                 result = deleteResult != 0
             }
-            return result
         } catch  {
-            return false
+            print(String(format: "delete error:%@",error.localizedDescription))
         }
+        
+        return result
     }
     
+    /**更新一筆資料*/
     public func update(info: MovieResultInfo) {
         do {
             let movId = Int64(info.movieID)
@@ -99,17 +118,22 @@ extension MovieTableManager {
             let query = try moviesTable.filter(movieId == selId).update(info)
             let result = try? databaseConnection?.run(query)
             let isSuccess = result != 0
+            
             NSLog("update success :\(isSuccess)")
         } catch  {
             NSLog("update error : \(error.localizedDescription)")
         }
     }
     
+    /**查詢全部資料*/
     public func loadInfos() throws -> [MovieResultInfo]? {
         do {
-            let savedInfos = try databaseConnection?.prepare(moviesTable).map() { (row) -> MovieResultInfo in
+            let savedInfos = try databaseConnection?.prepare(moviesTable).map() {
+                row -> MovieResultInfo in
+                
                 return try row.decode()
             }
+            
             return savedInfos
         } catch {
             throw error
@@ -118,17 +142,33 @@ extension MovieTableManager {
     
     
     //MARK: - SQL
+    /**新增單筆資料*/
     func insertInfo(info: MovieResultInfo) throws {
+        let title:String = info.title
+        let category:String = info.category
+        let year:String = String(info.year)
+        let movieUrl:String = info.movieURL
+        let coverURL:String = info.coverURL
+        let watched:String = String(info.watched == true)
+        let likes:String = String(info.likes == nil ? 0 : info.likes!)
         
-        let title = info.title
-        let category = info.category
-        let year = info.year
-        let movieUrl = info.movieURL
-        let coverURL = info.coverURL
-        let watched = info.watched == true
-        let likes = info.likes == nil ? 0 : info.likes!
-        
-        let sql = "INSERT INTO \"\(tableName)\" (\(movieTitle.asSQL()), \(movieCategory.asSQL()), \(movieYear.asSQL()), \(movieURL.asSQL()), \(movieCoverURL.asSQL()), \(movieWatched.asSQL()), \(movieLikes.asSQL())) VALUES ('\(title)', '\(category)', \(year), '\(movieUrl)', '\(coverURL)', \(watched), \(likes))"
+//        let sql = "INSERT INTO \"\(tableName)\" (\(movieTitle.asSQL()), \(movieCategory.asSQL()), \(movieYear.asSQL()), \(movieURL.asSQL()), \(movieCoverURL.asSQL()), \(movieWatched.asSQL()), \(movieLikes.asSQL())) VALUES ('\(title)', '\(category)', \(year), '\(movieUrl)', '\(coverURL)', \(watched), \(likes))"
+        let sql:String = "INSERT INTO ".appending(tableName).appending(" (")
+            .appending(movieTitle.asSQL()).appending(",")
+            .appending(movieCategory.asSQL()).appending(",")
+            .appending(movieYear.asSQL()).appending(",")
+            .appending(movieURL.asSQL()).appending(",")
+            .appending(movieCoverURL.asSQL()).appending(",")
+            .appending(movieWatched.asSQL()).appending(",")
+            .appending(movieLikes.asSQL()).appending(")")
+            .appending(" VALUES (")
+            .appending("'").appending(title).appending("',")
+            .appending("'").appending(category).appending("',")
+            .appending(year).appending(",")
+            .appending("'").appending(movieUrl).appending("',")
+            .appending("'").appending(coverURL).appending("',")
+            .appending(watched).appending(",")
+            .appending(likes).appending(");")
         
         do {
             try databaseConnection?.run(sql)
@@ -137,35 +177,54 @@ extension MovieTableManager {
         }
     }
     
+    /**刪除單筆資料*/
     public func deleteInfo(info : MovieResultInfo) throws -> Bool  {
         guard let infoId = info.movieID else {
             return false
         }
-        let sql = "DELETE FROM \"\(tableName)\" WHERE (\(movieId.asSQL()) = \(infoId))"
+        
+//        let sql = "DELETE FROM \"\(tableName)\" WHERE (\(movieId.asSQL()) = \(infoId))"
+        let sql:String = "DELETE FROM ".appending(tableName).appending(" WHERE ")
+            .appending(movieId.asSQL()).appending(" = '").appending(String(infoId)).appending("'")
+        
         do {
             try databaseConnection?.run(sql)
+            
             if let handle = databaseConnection?.handle {
                 let isChange = sqlite3_changes(handle)
+                
                 return isChange != 0
             }
+            
             return false
         } catch  {
             throw error
         }
     }
     
+    /**修改單筆資料*/
     func updateInfo(info: MovieResultInfo) throws {
-        let `id` : Int = info.movieID
-        let title = info.title
-        let category = info.category
-        let year = info.year
-        let movieUrl = info.movieURL
-        let coverURL = info.coverURL
-        let watched = info.watched == true
-        let likes = info.likes == nil ? 0 : info.likes!
+        let `id`:String = String(info.movieID)
+        let title:String = info.title
+        let category:String = info.category
+        let year:String = String(info.year)
+        let movieUrl:String = info.movieURL
+        let coverURL:String = info.coverURL
+        let watched:String = String(info.watched == true)
+        let likes:String = String(info.likes == nil ? 0 : info.likes!)
         
-        let sql = "UPDATE \"\(tableName)\" SET \(movieId.asSQL()) = \(id), \(movieTitle.asSQL()) = '\(title)', \(movieCategory.asSQL()) = '\(category)', \(movieYear.asSQL()) = \(year), \(movieURL.asSQL()) = '\(movieUrl)', \(movieCoverURL.asSQL()) = '\(coverURL)', \(movieWatched.asSQL()) = \(watched), \(movieLikes.asSQL()) = \(likes) WHERE (\(movieId.asSQL()) = \(id))"
-        
+//        let sql = "UPDATE \"\(tableName)\" SET \(movieId.asSQL()) = \(id), \(movieTitle.asSQL()) = '\(title)', \(movieCategory.asSQL()) = '\(category)', \(movieYear.asSQL()) = \(year), \(movieURL.asSQL()) = '\(movieUrl)', \(movieCoverURL.asSQL()) = '\(coverURL)', \(movieWatched.asSQL()) = \(watched), \(movieLikes.asSQL()) = \(likes) WHERE (\(movieId.asSQL()) = \(id))"
+        let sql:String = "UPDATE ".appending(tableName).appending(" SET ")
+            .appending(movieId.asSQL()).appending(" = ").appending(`id`).appending(", ")
+            .appending(movieTitle.asSQL()).appending(" = ").appending("'").appending(title).appending("', ")
+            .appending(movieCategory.asSQL()).appending(" = ").appending("'").appending(category).appending("', ")
+            .appending(movieYear.asSQL()).appending(" = ").appending(year).appending(", ")
+            .appending(movieURL.asSQL()).appending(" = ").appending("'").appending(movieUrl).appending("', ")
+            .appending(movieCoverURL.asSQL()).appending(" = ").appending("'").appending(coverURL).appending("', ")
+            .appending(movieWatched.asSQL()).appending(" = ").appending(watched).appending(", ")
+            .appending(movieLikes.asSQL()).appending(" = ").appending(likes).appending(" ")
+            .appending("WHERE ")
+            .appending(movieId.asSQL()).appending(" = ").appending(`id`)
         do {
             try databaseConnection?.run(sql)
         } catch  {
@@ -173,17 +232,22 @@ extension MovieTableManager {
         }
     }
     
+    /**查詢全部資料*/
     public func loadInfoArray(_ useSql: Bool = true) throws -> [MovieResultInfo]? {
         do {
-            let sql = "SELECT * FROM \"\(tableName)\""
+//            let sql = "SELECT * FROM \"\(tableName)\""
+            let sql:String = "SELECT * FROM ".appending(tableName)
+            
             guard let results = try databaseConnection?.prepare(sql) else {
                 return nil
             }
             
             let boolColumnName = movieWatched.asSQL().replacingOccurrences(of: "\"", with: "")
             var infoDicts = [[String : Any?]]()
+            
             for row in results {
                 var infoDict = [String : Any?]()
+                
                 for (index, name) in results.columnNames.enumerated() {
                     if boolColumnName == name {
                         let boolValue = row[index] as? Bool
@@ -194,12 +258,15 @@ extension MovieTableManager {
                         infoDict[name] = columnValue
                     }
                 }
+                
                 infoDicts.append(infoDict)
             }
             
             let infosData = try JSONSerialization.data(withJSONObject: infoDicts, options: .prettyPrinted)
             let movieInfos = try JSONDecoder().decode([MovieResultInfo].self, from: infosData)
+            
             NSLog("movieInfos : \(movieInfos)")
+            
             return movieInfos
         } catch {
             NSLog("loadInfos error : \(error)")
@@ -207,7 +274,6 @@ extension MovieTableManager {
         }
     }
 }
-
 
 extension MovieTableManager {
     // 執行一般 SQL 取得結果
@@ -258,7 +324,9 @@ extension MovieTableManager {
                 break
             }
         }
+        
         hadCoverDataRow = isContain
+        
         return isContain
     }
     
@@ -267,6 +335,7 @@ extension MovieTableManager {
         if checkTableHad(row: movieCoverData) {
             return
         }
+        
         do {
             let query = moviesTable.addColumn(column, defaultValue: defaultValue)
             try databaseConnection?.run(query)
@@ -274,10 +343,12 @@ extension MovieTableManager {
             NSLog("insert fail error : \(error.localizedDescription)")
         }
     }
+    
     private func addNewColumn<T : Value>(column : Expression<T>, defaultValue : T) {
         if checkTableHad(row: movieCoverData) {
             return
         }
+        
         do {
             let query = moviesTable.addColumn(column, defaultValue: defaultValue)
             try databaseConnection?.run(query)
@@ -288,22 +359,25 @@ extension MovieTableManager {
 }
 
 extension MovieTableManager {
+    /**取得假資料*/
     public func getMoviesInfoArray() -> [MovieResultInfo]? {
         guard
-            let moviePilePath = Bundle.main.path(forResource: "movies", ofType: "tsv"),
-            let moviesFileContents = try? String(contentsOfFile: moviePilePath)
+            let movieFilePath:String = Bundle.main.path(forResource: tableName, ofType: "tsv"),
+            let moviesFileContents:String = try? String(contentsOfFile: movieFilePath)
         else {
             return nil
         }
         
-        let movieData = moviesFileContents.components(separatedBy: "\r\n")
-        var movieInfoDict = [[String : Any?]]()
+        let movieData:[String] = moviesFileContents.components(separatedBy: "\r\n")
+        var movieInfoDict:[[String:Any?]] = [[String:Any?]]()
+        
         for movieInfoStr in movieData {
             if movieInfoStr.count == 0 {
                 continue
             }
-            let movieInfoArray = movieInfoStr.components(separatedBy: "\t")
-            var infoDict = [String : Any?]()
+            
+            let movieInfoArray:[String] = movieInfoStr.components(separatedBy: "\t")
+            var infoDict:[String:Any?] = [String:Any?]()
             
             infoDict["title"] = movieInfoArray[0]
             infoDict["category"] = movieInfoArray[1]
@@ -313,9 +387,11 @@ extension MovieTableManager {
             
             movieInfoDict.append(infoDict)
         }
+        
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: movieInfoDict, options: .prettyPrinted)
             let resultInfoArray = try JSONDecoder().decode([MovieResultInfo].self, from: jsonData)
+            
             return resultInfoArray
         } catch  {
             NSLog("change error : \(error.localizedDescription)")
@@ -330,8 +406,11 @@ extension MovieTableManager {
         if infoArray.count == 0 {
             return
         }
+        
         do {
-            try transaction { [weak self] in
+            try transaction {
+                [weak self] in
+                
                 for info in infoArray {
                     do {
                         try self?.insert(movieInfo: info)
@@ -369,7 +448,7 @@ extension MovieTableManager {
         }
         do {
             let firstInfo: MovieResultInfo = try row.decode()
-            NSLog("id : \(firstInfo.movieID)")
+            NSLog("id : \(String(describing: firstInfo.movieID))")
         } catch  {
             NSLog("decode error : \(error.localizedDescription)")
         }
@@ -414,54 +493,81 @@ extension MovieTableManager {
 
 //MARK: Join 範例
 extension MovieTableManager {
-    /* android join 語法
-     SELECT ResultSheetHeader.resultSheetID FROM ResultSheetHeader INNER JOIN ResultSheetQuestion ON ResultSheetHeader.resultSheetID = ResultSheetQuestion.resultSheetID WHERE departure= :departure AND ResultSheetQuestion.creator=:fUserID AND ResultSheetHeader.accepted != 'Y' GROUP BY ResultSheetHeader.resultSheetID
+    /*
+     android join 語法
+     
+     SELECT
+        ResultSheetHeader.resultSheetID
+     FROM
+        ResultSheetHeader
+     INNER JOIN
+        ResultSheetQuestion
+     ON
+        ResultSheetHeader.resultSheetID = ResultSheetQuestion.resultSheetID
+     WHERE
+        departure= :departure
+     AND
+        ResultSheetQuestion.creator=:fUserID
+     AND
+        ResultSheetHeader.accepted != 'Y'
+     GROUP BY
+        ResultSheetHeader.resultSheetID
      */
     
     public func join(table: QueryType ,column: Expression<String> ,for selfColume: Expression<String>) {
-        let joinInfo = table[column] == moviesTable[selfColume]
+        let joinInfo:Expression<Bool> = table[column] == moviesTable[selfColume]
         
-        let query = moviesTable.select(movieTitle).join(table, on: joinInfo).where(movieYear > 1990 && movieId == 0).group(movieTitle)
+        let query:Table = moviesTable.select(movieTitle).join(.inner, table, on: joinInfo)
+                    .where(movieYear > 1990 && movieId == 0).group(movieTitle)
         
         NSLog("query sql : \(query.asSQL())")
     }
     
-    
+    /**取得電影海報圖片資料*/
     public func getCoverImage(from info : MovieResultInfo) -> UIImage? {
         var resultImg : UIImage?
         
-        let movieTable = MovieTableManager.shared.moviesTable
-        let coverTable = CoverTableManager.shared.coverTable
+        /*要結合的Table*/
+        let movieTable:Table = MovieTableManager.instance.moviesTable
+        let coverTable:Table = CoverTableManager.instance.coverTable
         
-        let movieTableCoverUrl = MovieTableManager.shared.movieCoverURL
-        let coverTableCoverUrl = CoverTableManager.shared.coverURL
+        /*join欄位*/
+        let movieTableCoverUrl:Expression<String> = MovieTableManager.instance.movieCoverURL
+        let coverTableCoverUrl:Expression<String> = CoverTableManager.instance.coverURL
         
-        let joinReQuestInfo : Expression<Bool> = movieTable[movieTableCoverUrl] == coverTable[coverTableCoverUrl]
+        /*結合條件*/
+        let joinReQuestInfo:Expression<Bool> = movieTable[movieTableCoverUrl] == coverTable[coverTableCoverUrl]
         
-        let whereRequest = movieTable[movieTableCoverUrl] == coverTable[coverTableCoverUrl] &&
+        /*condition*/
+        let whereRequest:Expression<Bool> = movieTable[movieTableCoverUrl] == coverTable[coverTableCoverUrl] &&
                             coverTable[coverTableCoverUrl] == info.coverURL
         
-        let selectRequest = CoverTableManager.shared.coverData
+        let selectRequest:Expression<Data?> = CoverTableManager.instance.coverData
         
-        let info = coverTable
-                    .select(selectRequest)
-                    .join(movieTable, on: joinReQuestInfo)
-                    .where(whereRequest)
+        let info:Table = coverTable
+                    .select(selectRequest)//查詢欄位
+                    .join(movieTable, on: joinReQuestInfo)//結合條件
+                    .where(whereRequest)//condition
+        
         do {
             guard let results = try databaseConnection?.prepare(info) else {
                 return resultImg
             }
+            
             for row in results {
-                guard let imgData = try row.get(CoverTableManager.shared.coverData),
+                guard let imgData = try row.get(CoverTableManager.instance.coverData),
                       let img = UIImage(data: imgData)
                 else { continue }
                 resultImg = img
+                
                 break
             }
+            
             return resultImg
         } catch  {
             NSLog("error : \(error)")
         }
+        
         return resultImg
     }
 }

@@ -9,7 +9,7 @@
 import UIKit
 import SQLite
 class CoverTableManager: DatabaseManager {
-    static let shared = CoverTableManager()
+    static let instance = CoverTableManager()
     
     private let tableName = "moviecover_Info"
     public private(set) lazy var coverTable = Table(tableName)
@@ -25,12 +25,15 @@ class CoverTableManager: DatabaseManager {
             // temporary: 是否為臨時的 Table
             // ifNotExists: 是否不存在時才會建立
             // withoutRowid: 是否建立自動增長的 Id
-            let createSql = coverTable.create(temporary: false, ifNotExists: true, withoutRowid: false) { (table) in
+            let createSql = coverTable.create(temporary: false, ifNotExists: true, withoutRowid: false) {
+                table in
+                
                 table.column(id, primaryKey: .autoincrement)
                 table.column(movieURL)
                 table.column(coverURL)
                 table.column(coverData, defaultValue: nil)
             }
+            
             do {
                 try databaseConnection?.run(createSql)
             } catch  {
@@ -40,6 +43,7 @@ class CoverTableManager: DatabaseManager {
         
         do {
             let isExists = try databaseConnection?.scalar(coverTable.exists)
+            
             if isExists != true {
                 createTable()
             }
@@ -47,6 +51,7 @@ class CoverTableManager: DatabaseManager {
             NSLog("check table Error : \(error)")
             createTable()
         }
+        
         return result
     }
 }
@@ -65,18 +70,27 @@ extension CoverTableManager {
             let sql = coverTable.insert(movieURL <- converMovieURL,
                                         coverURL <- coverImgUrl,
                                         coverData <- coverImgData)
+            
             try databaseConnection?.run(sql)
         } catch  {
             NSLog("insert error : \(error.localizedDescription)")
         }
     }
     
+    /// 查詢資料
+    /// - Parameter movieUrl: 查詢參數
+    /// - Throws: error
+    /// - Returns: 單筆資料
     public func select(movieUrl : String) throws -> CoverInfo? {
         let query = coverTable.filter(movieURL == movieUrl)
+        
         do {
-            let savedInfos = try databaseConnection?.prepare(query).map() { (row) -> CoverInfo in
+            let savedInfos = try databaseConnection?.prepare(query).map() {
+                row -> CoverInfo in
+                
                 return try row.decode()
             }
+            
             return savedInfos?.first
         } catch  {
             throw error

@@ -9,45 +9,50 @@
 import UIKit
 import FMDB
 class FMDBManager: NSObject {
-
-    let field_MovieID = "movieID"
-    let field_MovieTitle = "title"
-    let field_MovieCategory = "category"
-    let field_MovieYear = "year"
-    let field_MovieURL = "movieURL"
-    let field_MovieCoverURL = "coverURL"
-    let field_MovieWatched = "watched"
-    let field_MovieLikes = "likes"
+    static let instance:FMDBManager = FMDBManager()
     
+    private let databaseFileName:String = "FMDatabase.sqlite"
     
-    static let shared: FMDBManager = FMDBManager()
+    /*Table欄位*/
+    private let field_MovieID:String = "movieID"
+    private let field_MovieTitle:String = "title"
+    private let field_MovieCategory:String = "category"
+    private let field_MovieYear:String = "year"
+    private let field_MovieURL:String = "movieURL"
+    private let field_MovieCoverURL:String = "coverURL"
+    private let field_MovieWatched:String = "watched"
+    private let field_MovieLikes:String = "likes"
     
-    let databaseFileName = "FMDatabase.sqlite"
-    
-    var pathToDatabase: String = ""
-    
-    var database: FMDatabase!
-    
+    private var pathToDatabase:String = ""//.sqlite檔案路徑
+    private var database:FMDatabase!
     
     override init() {
         super.init()
         
-        let documentsDirectory = (NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as NSString) as String
+        let documentsDirectory:String = (NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as NSString) as String
         pathToDatabase = documentsDirectory.appending("/\(databaseFileName)")
     }
     
-    
-    
+    /**創建DB*/
     func createDatabase() -> Bool {
-        var created = false
+        var created:Bool = false
         
+        /*DB檔案不存在*/
         if !FileManager.default.fileExists(atPath: pathToDatabase) {
             database = FMDatabase(path: pathToDatabase)
             
             if database != nil {
                 // Open the database.
                 if database.open() {
-                    let createMoviesTableQuery = "create table movies (\(field_MovieID) integer primary key autoincrement not null, \(field_MovieTitle) text not null, \(field_MovieCategory) text not null, \(field_MovieYear) integer not null, \(field_MovieURL) text, \(field_MovieCoverURL) text not null, \(field_MovieWatched) bool not null default 0, \(field_MovieLikes) integer not null)"
+                    let createMoviesTableQuery:String = "CREATE TABLE movies ("
+                        .appending("\(field_MovieID) INTEGER PRIMARY KEY AUTOINCREMENT NOT NUll,")
+                        .appending("\(field_MovieTitle) TEXT NOT NULL,")
+                        .appending("\(field_MovieCategory) TEXT NOT NULL,")
+                        .appending("\(field_MovieYear) INTEGER NOT NULL,")
+                        .appending("\(field_MovieURL) TEXT,")
+                        .appending("\(field_MovieCoverURL) TEXT NOT NULL,")
+                        .appending("\(field_MovieWatched) BOOL NOT NULL DEFAULT 0,")
+                        .appending("\(field_MovieLikes) INTEGER NOT NULL)")
                     
                     do {
                         try database.executeUpdate(createMoviesTableQuery, values: nil)
@@ -65,12 +70,12 @@ class FMDBManager: NSObject {
                 }
             }
         }
+        
         return created
     }
     
-    
+    /***/
     func openDatabase() -> Bool {
-        
         if database == nil {
             if FileManager.default.fileExists(atPath: pathToDatabase) {
                 database = FMDatabase(path: pathToDatabase)
@@ -86,7 +91,7 @@ class FMDBManager: NSObject {
         return false
     }
     
-    
+    /***/
     func insertMovieData() {
         if openDatabase() {
             if let pathToMoviesFile = Bundle.main.path(forResource: "movies", ofType: "tsv") {
@@ -124,7 +129,7 @@ class FMDBManager: NSObject {
         }
     }
     
-    
+    /***/
     func loadMovies() -> [MovieInfo]! {
         var movies: [MovieInfo]!
         
@@ -162,7 +167,7 @@ class FMDBManager: NSObject {
         return movies
     }
     
-    
+    /***/
     func loadMovie(withID ID: Int, completionHandler: (_ movieInfo: MovieInfo?) -> Void) {
         var movieInfo: MovieInfo!
         
@@ -197,7 +202,7 @@ class FMDBManager: NSObject {
         completionHandler(movieInfo)
     }
     
-    
+    /***/
     func updateMovie(withID ID: Int, watched: Bool, likes: Int) {
         if openDatabase() {
             let query = "update movies set \(field_MovieWatched)=?, \(field_MovieLikes)=? where \(field_MovieID)=?"
@@ -213,7 +218,7 @@ class FMDBManager: NSObject {
         }
     }
     
-    
+    /***/
     func deleteMovie(withID ID: Int) -> Bool {
         var deleted = false
         
@@ -233,5 +238,4 @@ class FMDBManager: NSObject {
         
         return deleted
     }
-    
 }

@@ -35,15 +35,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
         
-        if FMDBManager.shared.createDatabase() {
-            FMDBManager.shared.insertMovieData()
+        if FMDBManager.instance.createDatabase() {
+            FMDBManager.instance.insertMovieData()
         }
-        if MovieTableManager.shared.createDatabase(),
-           let array = MovieTableManager.shared.getMoviesInfoArray(){
-            MovieTableManager.shared.insert(infoArray: array)
-        }
-        let _ = CoverTableManager.shared.createDatabase()
         
+        /*建立資料表，建立成功後建立假資料*/
+        if MovieTableManager.instance.createDatabase(),
+           let array:[MovieResultInfo] = MovieTableManager.instance.getMoviesInfoArray(){
+            MovieTableManager.instance.insert(infoArray: array)
+        }
+        
+        let _ = CoverTableManager.instance.createDatabase()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

@@ -107,8 +107,9 @@ class MovieDetailsViewController: UIViewController {
     
     @IBAction func saveChanges(_ sender: AnyObject) {
         if let info = movieInfo {
-            MovieTableManager.shared.update(info: info)
+            MovieTableManager.instance.update(info: info)
         }
+        
         self.navigationController?.popViewController(animated: true)
     }
     

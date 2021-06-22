@@ -27,7 +27,7 @@ class MoviesViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        if let results = try? MovieTableManager.shared.loadInfos() {
+        if let results = try? MovieTableManager.instance.loadInfos() {
             movieResults = results
         }
         else {
@@ -69,11 +69,11 @@ extension MoviesViewController: UITableViewDelegate {
         let selResult = movieResults[indexPath.row]
         
         guard let movieID = selResult.movieID,
-            let selMovieInfo = try? MovieTableManager.shared.select(defineId: movieID) else {
+            let selMovieInfo = try? MovieTableManager.instance.select(defineId: movieID) else {
             return
         }
         
-        let img = MovieTableManager.shared.getCoverImage(from: selMovieInfo)
+        let img = MovieTableManager.instance.getCoverImage(from: selMovieInfo)
         
         let detailVC = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "MovieDetailsViewController") as! MovieDetailsViewController
         detailVC.movieInfo = selMovieInfo
@@ -85,7 +85,7 @@ extension MoviesViewController: UITableViewDelegate {
             return
         }
         let selResult = movieResults[indexPath.row]
-        let deleteSuccess = MovieTableManager.shared.delete(info: selResult)
+        let deleteSuccess = MovieTableManager.instance.delete(info: selResult)
         if !deleteSuccess {
             return
         }
