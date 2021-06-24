@@ -12,6 +12,7 @@
 		1F8D048B264E0F9800926DBB /* SqliteSwiftExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8D048A264E0F9800926DBB /* SqliteSwiftExtension.swift */; };
 		1F9FD35826798350001C6797 /* CoverTableManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9FD35726798350001C6797 /* CoverTableManager.swift */; };
 		1F9FD35B26798387001C6797 /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9FD35A26798387001C6797 /* DatabaseManager.swift */; };
+		421E1D8C2682050E00E7DD81 /* SQLiteUpgrade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421E1D8B2682050E00E7DD81 /* SQLiteUpgrade.swift */; };
 		C02828A01DA3C09700168A48 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C028289F1DA3C09700168A48 /* AppDelegate.swift */; };
 		C02828A51DA3C09700168A48 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C02828A31DA3C09700168A48 /* Main.storyboard */; };
 		C02828A71DA3C09700168A48 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C02828A61DA3C09700168A48 /* Assets.xcassets */; };
@@ -30,6 +31,7 @@
 		1F8D048A264E0F9800926DBB /* SqliteSwiftExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SqliteSwiftExtension.swift; sourceTree = "<group>"; };
 		1F9FD35726798350001C6797 /* CoverTableManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverTableManager.swift; sourceTree = "<group>"; };
 		1F9FD35A26798387001C6797 /* DatabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
+		421E1D8B2682050E00E7DD81 /* SQLiteUpgrade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteUpgrade.swift; sourceTree = "<group>"; };
 		56E9E3B39B5DFC8670F7AF13 /* Pods-FMDBTut.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FMDBTut.release.xcconfig"; path = "Target Support Files/Pods-FMDBTut/Pods-FMDBTut.release.xcconfig"; sourceTree = "<group>"; };
 		A2FB5A580B17A6AC608A0F67 /* Pods_FMDBTut.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FMDBTut.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C028289C1DA3C09700168A48 /* FMDBTut.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FMDBTut.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -150,6 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				1F9FD35A26798387001C6797 /* DatabaseManager.swift */,
+				421E1D8B2682050E00E7DD81 /* SQLiteUpgrade.swift */,
 				1F650251263908980050A272 /* MovieTableManager.swift */,
 				1F9FD35726798350001C6797 /* CoverTableManager.swift */,
 			);
@@ -322,6 +325,7 @@
 				1F9FD35826798350001C6797 /* CoverTableManager.swift in Sources */,
 				C02828A01DA3C09700168A48 /* AppDelegate.swift in Sources */,
 				1F65025626393C870050A272 /* CodableModel.swift in Sources */,
+				421E1D8C2682050E00E7DD81 /* SQLiteUpgrade.swift in Sources */,
 				C0F8EF711DA7B34D00318523 /* FMDBManager.swift in Sources */,
 				1F650252263908980050A272 /* MovieTableManager.swift in Sources */,
 				1F8D048B264E0F9800926DBB /* SqliteSwiftExtension.swift in Sources */,

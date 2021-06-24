@@ -8,41 +8,48 @@
 
 import UIKit
 import SQLite
-class CoverTableManager: DatabaseManager {
+
+class CoverTableManager: NSObject{
     static let instance = CoverTableManager()
     
-    private let tableName = "moviecover_Info"
+    public let tableName = "moviecover_Info"
     public private(set) lazy var coverTable = Table(tableName)
     public let `id` = Expression<Int64>("id")
     public let movieURL = Expression<String>("movieURL")
     public let coverURL = Expression<String>("coverURL")
     public let coverData = Expression<Data?>("coverData")
     
-    override func createDatabase() -> Bool {
-        let result = super.createDatabase()
+    public var createSql:String?
+    
+    override init() {
+        super.init()
+        
+        // temporary: 是否為臨時的 Table
+        // ifNotExists: 是否不存在時才會建立
+        // withoutRowid: 是否建立自動增長的 Id
+        createSql = coverTable.create(temporary: false, ifNotExists: true, withoutRowid: false) {
+            table in
+            
+            table.column(id, primaryKey: .autoincrement)
+            table.column(movieURL)
+            table.column(coverURL)
+            table.column(coverData, defaultValue: nil)
+        }
+    }
+    
+    func createDatabase() -> Bool {
+        let result = DatabaseManager.instance.created
         
         func createTable() {
-            // temporary: 是否為臨時的 Table
-            // ifNotExists: 是否不存在時才會建立
-            // withoutRowid: 是否建立自動增長的 Id
-            let createSql = coverTable.create(temporary: false, ifNotExists: true, withoutRowid: false) {
-                table in
-                
-                table.column(id, primaryKey: .autoincrement)
-                table.column(movieURL)
-                table.column(coverURL)
-                table.column(coverData, defaultValue: nil)
-            }
-            
             do {
-                try databaseConnection?.run(createSql)
+                try DatabaseManager.instance.databaseConnection?.run(createSql!)
             } catch  {
                 NSLog("create table error : \(error)")
             }
         }
         
         do {
-            let isExists = try databaseConnection?.scalar(coverTable.exists)
+            let isExists = try DatabaseManager.instance.databaseConnection?.scalar(coverTable.exists)
             
             if isExists != true {
                 createTable()
@@ -71,7 +78,7 @@ extension CoverTableManager {
                                         coverURL <- coverImgUrl,
                                         coverData <- coverImgData)
             
-            try databaseConnection?.run(sql)
+            try DatabaseManager.instance.databaseConnection?.run(sql)
         } catch  {
             NSLog("insert error : \(error.localizedDescription)")
         }
@@ -85,7 +92,7 @@ extension CoverTableManager {
         let query = coverTable.filter(movieURL == movieUrl)
         
         do {
-            let savedInfos = try databaseConnection?.prepare(query).map() {
+            let savedInfos = try DatabaseManager.instance.databaseConnection?.prepare(query).map() {
                 row -> CoverInfo in
                 
                 return try row.decode()

@@ -39,13 +39,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             FMDBManager.instance.insertMovieData()
         }
         
-        /*建立資料表，建立成功後建立假資料*/
-        if MovieTableManager.instance.createDatabase(),
-           let array:[MovieResultInfo] = MovieTableManager.instance.getMoviesInfoArray(){
-            MovieTableManager.instance.insert(infoArray: array)
-        }
+        /*專案全部的DB Table*/
+        SQLiteUpgrade.instance.tableInfo[MovieTableManager.instance.tableName] = MovieTableManager.instance.createSql
+        SQLiteUpgrade.instance.tableInfo[CoverTableManager.instance.tableName] = CoverTableManager.instance.createSql
         
-        let _ = CoverTableManager.instance.createDatabase()
+        SQLiteUpgrade.instance.onUpgrade()
+        
+        do{
+            /*沒有資料就建立假資料*/
+            if try MovieTableManager.instance.loadInfoArray()?.count == 0,
+               let array:[MovieResultInfo] = MovieTableManager.instance.getMoviesInfoArray(){
+                MovieTableManager.instance.insert(infoArray: array)
+            }
+            
+            let _ = CoverTableManager.instance.createDatabase()
+        }catch{
+            print(error.localizedDescription)
+        }
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

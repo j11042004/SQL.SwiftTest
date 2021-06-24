@@ -10,10 +10,13 @@ import UIKit
 import SQLite
 
 class DatabaseManager: NSObject {
+    static let instance = DatabaseManager()
+    
     private let databaseFileName:String = "SwiftSQLDatabase.sqlite"
     
     public private(set) var dataBasePath:String = ""//.sqlite檔案路徑
     public private(set) var databaseConnection:Connection?
+    public private(set) var created:Bool = false//資料庫是否已建立
     
     /**資料庫版本*/
     public var dbversion : Int {
@@ -30,12 +33,12 @@ class DatabaseManager: NSObject {
         let documentsDirectory:String = (NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as NSString) as String
         dataBasePath = NSString.path(withComponents: [documentsDirectory, databaseFileName]) as String
         
+        createDatabase()
         NSLog("data base Path : \(dataBasePath)")
     }
     
     /**創建資料庫*/
-    public func createDatabase() -> Bool {
-        var created:Bool = false//資料庫是否已建立
+    public func createDatabase() {
         let fileExists:Bool = FileManager.default.fileExists(atPath: dataBasePath)
         
         do {
@@ -63,8 +66,6 @@ class DatabaseManager: NSObject {
             
             NSLog("run SQL : \(result)")
         }
-        
-        return created
     }
     
     /**大量資料新增，失敗可rollback*/

@@ -9,11 +9,11 @@
 import UIKit
 import SQLite
 
-class MovieTableManager: DatabaseManager {
+class MovieTableManager: NSObject {
     static let instance = MovieTableManager()
     
     /*Table名稱*/
-    private let tableName = "movies"
+    public let tableName = "movies"
     
     /*Table欄位*/
     public private(set) lazy var moviesTable = Table(tableName)
@@ -29,42 +29,47 @@ class MovieTableManager: DatabaseManager {
     
     /**/
     private var hadCoverDataRow = false
+    public var createSql:String?
+    
+    override init() {
+        super.init()
+        
+        // temporary: 是否為臨時的 Table
+        // ifNotExists: 是否不存在時才會建立
+        // withoutRowid: 是否建立自動增長的 Id
+        createSql = moviesTable.create(temporary: false, ifNotExists: true, withoutRowid: false) {
+            table in
+            
+            table.column(movieId, primaryKey: .autoincrement)
+            table.column(movieTitle)
+            table.column(movieCategory)
+            table.column(movieYear)
+            table.column(movieURL)
+            table.column(movieCoverURL)
+            
+            // 若是由 Codable Modle 會有 nil 的 欄位要在此給預設值
+            table.column(movieWatched, defaultValue: false)
+            table.column(movieLikes, defaultValue: 0)
+
+            NSLog("\(movieWatched.expression.asSQL())")
+        }
+    }
     
     /**建立Table*/
-    override func createDatabase() -> Bool {
-        let result:Bool = super.createDatabase()
-        
+    func createDatabase() -> Bool {
+        let result:Bool = DatabaseManager.instance.created
+       
         func createTable() {
-            // temporary: 是否為臨時的 Table
-            // ifNotExists: 是否不存在時才會建立
-            // withoutRowid: 是否建立自動增長的 Id
-            let createSql = moviesTable.create(temporary: false, ifNotExists: true, withoutRowid: false) {
-                table in
-                
-                table.column(movieId, primaryKey: .autoincrement)
-                table.column(movieTitle)
-                table.column(movieCategory)
-                table.column(movieYear)
-                table.column(movieURL)
-                table.column(movieCoverURL)
-                
-                // 若是由 Codable Modle 會有 nil 的 欄位要在此給預設值
-                table.column(movieWatched, defaultValue: false)
-                table.column(movieLikes, defaultValue: 0)
-
-                NSLog("\(movieWatched.expression.asSQL())")
-            }
-            
             do {
                 /*create table*/
-                try databaseConnection?.run(createSql)
+                try DatabaseManager.instance.databaseConnection?.run(createSql!)
             } catch  {
                 NSLog("create table error : \(error)")
             }
         }
         
         do {
-            let isExists:Bool? = try databaseConnection?.scalar(moviesTable.exists)//該Table是否已成功創建
+            let isExists:Bool? = try DatabaseManager.instance.databaseConnection?.scalar(moviesTable.exists)//該Table是否已成功創建
             
             /*Table不存在，重跑一次方法*/
             if isExists != true {
@@ -85,7 +90,7 @@ extension MovieTableManager {
         do {
             let sql:Insert = try moviesTable.insert(movieInfo)
             
-            try databaseConnection?.run(sql)
+            try DatabaseManager.instance.databaseConnection?.run(sql)
         } catch  {
             throw error
         }
@@ -100,7 +105,7 @@ extension MovieTableManager {
         var result = false
         
         do {
-            if let deleteResult = try databaseConnection?.run(deleteQuery) {
+            if let deleteResult = try DatabaseManager.instance.databaseConnection?.run(deleteQuery) {
                 result = deleteResult != 0
             }
         } catch  {
@@ -116,7 +121,7 @@ extension MovieTableManager {
             let movId = Int64(info.movieID)
             let selId = Expression<Int64>(value: movId)
             let query = try moviesTable.filter(movieId == selId).update(info)
-            let result = try? databaseConnection?.run(query)
+            let result = try? DatabaseManager.instance.databaseConnection?.run(query)
             let isSuccess = result != 0
             
             NSLog("update success :\(isSuccess)")
@@ -128,7 +133,7 @@ extension MovieTableManager {
     /**查詢全部資料*/
     public func loadInfos() throws -> [MovieResultInfo]? {
         do {
-            let savedInfos = try databaseConnection?.prepare(moviesTable).map() {
+            let savedInfos = try DatabaseManager.instance.databaseConnection?.prepare(moviesTable).map() {
                 row -> MovieResultInfo in
                 
                 return try row.decode()
@@ -171,13 +176,13 @@ extension MovieTableManager {
             .appending(likes).appending(");")
         
         do {
-            try databaseConnection?.run(sql)
+            try DatabaseManager.instance.databaseConnection?.run(sql)
         } catch  {
             throw error
         }
     }
     
-    /**刪除單筆資料*/
+    /**刪除資料*/
     public func deleteInfo(info : MovieResultInfo) throws -> Bool  {
         guard let infoId = info.movieID else {
             return false
@@ -188,9 +193,9 @@ extension MovieTableManager {
             .appending(movieId.asSQL()).appending(" = '").appending(String(infoId)).appending("'")
         
         do {
-            try databaseConnection?.run(sql)
+            try DatabaseManager.instance.databaseConnection?.run(sql)
             
-            if let handle = databaseConnection?.handle {
+            if let handle = DatabaseManager.instance.databaseConnection?.handle {
                 let isChange = sqlite3_changes(handle)
                 
                 return isChange != 0
@@ -226,7 +231,7 @@ extension MovieTableManager {
             .appending("WHERE ")
             .appending(movieId.asSQL()).appending(" = ").appending(`id`)
         do {
-            try databaseConnection?.run(sql)
+            try DatabaseManager.instance.databaseConnection?.run(sql)
         } catch  {
             throw error
         }
@@ -238,7 +243,7 @@ extension MovieTableManager {
 //            let sql = "SELECT * FROM \"\(tableName)\""
             let sql:String = "SELECT * FROM ".appending(tableName)
             
-            guard let results = try databaseConnection?.prepare(sql) else {
+            guard let results = try DatabaseManager.instance.databaseConnection?.prepare(sql) else {
                 return nil
             }
             
@@ -279,7 +284,7 @@ extension MovieTableManager {
     // 執行一般 SQL 取得結果
     private func run(sql: String) -> [[Any?]]? {
         do {
-            guard let requestResults = try databaseConnection?.prepare(sql) else {
+            guard let requestResults = try DatabaseManager.instance.databaseConnection?.prepare(sql) else {
                 return nil
             }
             var resultArray = [[Any?]]()
@@ -338,7 +343,7 @@ extension MovieTableManager {
         
         do {
             let query = moviesTable.addColumn(column, defaultValue: defaultValue)
-            try databaseConnection?.run(query)
+            try DatabaseManager.instance.databaseConnection?.run(query)
         } catch  {
             NSLog("insert fail error : \(error.localizedDescription)")
         }
@@ -351,7 +356,7 @@ extension MovieTableManager {
         
         do {
             let query = moviesTable.addColumn(column, defaultValue: defaultValue)
-            try databaseConnection?.run(query)
+            try DatabaseManager.instance.databaseConnection?.run(query)
         } catch  {
             NSLog("insert fail error : \(error.localizedDescription)")
         }
@@ -408,7 +413,7 @@ extension MovieTableManager {
         }
         
         do {
-            try transaction {
+            try DatabaseManager.instance.transaction {
                 [weak self] in
                 
                 for info in infoArray {
@@ -432,7 +437,7 @@ extension MovieTableManager {
         
         let query = moviesTable.filter(movieId == willSelId)
         do {
-            let savedInfos = try databaseConnection?.prepare(query).map() { (row) -> MovieResultInfo in
+            let savedInfos = try DatabaseManager.instance.databaseConnection?.prepare(query).map() { (row) -> MovieResultInfo in
                 return try row.decode()
             }
             return savedInfos?.first
@@ -443,7 +448,7 @@ extension MovieTableManager {
     
     // 讀取第一項資料
     public func selectFirstInfo () {
-        guard let row = try? databaseConnection?.pluck(moviesTable) else {
+        guard let row = try? DatabaseManager.instance.databaseConnection?.pluck(moviesTable) else {
             return
         }
         do {
@@ -459,7 +464,7 @@ extension MovieTableManager {
         // 列出 title
         let query = moviesTable.filter(movieYear > 1990).order(movieId)
         do {
-            let savedInfos = try databaseConnection?.prepare(query).map() { (row) -> MovieResultInfo in
+            let savedInfos = try DatabaseManager.instance.databaseConnection?.prepare(query).map() { (row) -> MovieResultInfo in
                 return try row.decode()
             }
             return savedInfos
@@ -482,7 +487,7 @@ extension MovieTableManager {
             let query = moviesTable.filter(movieId == selId).update(
                 movieCoverData <- coverData,
                 movieTitle <- info.title)
-            let result = try databaseConnection?.run(query)
+            let result = try DatabaseManager.instance.databaseConnection?.run(query)
             let isSuccess = result != 0
             NSLog("update success :\(isSuccess)")
         } catch  {
@@ -550,7 +555,7 @@ extension MovieTableManager {
                     .where(whereRequest)//condition
         
         do {
-            guard let results = try databaseConnection?.prepare(info) else {
+            guard let results = try DatabaseManager.instance.databaseConnection?.prepare(info) else {
                 return resultImg
             }
             
